@@ -14,13 +14,16 @@ def main():
 
     output = get_sacct_output(parameters.job_id)
     (begin, end, nodes) = parse_output(output)
-
-    epoch_begin = convert_to_epoch(begin)
-    epoch_end = convert_to_epoch(end)
+    try:
+        epoch_begin = convert_to_epoch(begin)
+        epoch_end = convert_to_epoch(end)
+    except: 
+        sys.exit("\nOoops, looks like bad jobID is supplied. Double check it :)\n\nExiting ...\n")
+        
 
     separated_nodes = separate_slurm_nodes(nodes)
     
-    get_pwr_one_node(epoch_begin, epoch_end, separated_nodes, parameters.job_id)
+    get_pwr_nodes(epoch_begin, epoch_end, separated_nodes, parameters.job_id)
 
     total_average_job_file_power(parameters.job_id)
 
@@ -33,25 +36,31 @@ def total_average_job_file_power(jobID):
 
     for file in glob.glob("{}/*.pwr".format(jobID)):
         print file
-        data = np.genfromtxt(file, delimiter=',', names=True, dtype=None, usecols=(-1))
-        total_average_power+=np.average(data['Value'])/1000.00
+        try:
+            data = np.genfromtxt(file, delimiter=',', names=True, dtype=None, usecols=(-1))
+            total_average_power+=np.average(data['Value'])/1000.00
+        except:
+            sys.exit("\nOooops, looks like something is wrong with the power samples!\nExiting ...\n")
 
     print "Total average power is: {}".format(total_average_power)
     return
 
 
-def get_pwr_one_node(start, end, nodes, jobID):
+def get_pwr_nodes(start, end, nodes, jobID):
     if not os.path.exists(str(jobID)):
         os.makedirs(str(jobID))
     for node in nodes:
-        cmd = "dcdbquery -h mb.mont.blanc -r {0}-PWR {1} {2}".format(node, start, end, node)
-        cmd = cmd.split(" ")
-        power_out = open("{0}/{1}.pwr".format(jobID, node), 'w')
-        p = subprocess.Popen(cmd, stdout=power_out, stderr=subprocess.PIPE)
-        err = p.communicate()
-        power_out.flush()
-        power_out.close()
-
+        try:
+            cmd = "dcdbquery -h mb.mont.blanc -r {0}-PWR {1} {2}".format(node, start, end, node)
+            cmd = cmd.split(" ")
+            power_out = open("{0}/{1}.pwr".format(jobID, node), 'w')
+            p = subprocess.Popen(cmd, stdout=power_out, stderr=subprocess.PIPE)
+        
+            err = p.communicate()
+            power_out.flush()
+            power_out.close()
+        except:
+            sys.exit("\nDid you load module power_monitor?\nExiting ....\n")
     return
 
 
