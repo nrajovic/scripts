@@ -25,23 +25,23 @@ def main():
     
     get_pwr_nodes(epoch_begin, epoch_end, separated_nodes, parameters.job_id)
 
-    total_average_job_file_power(parameters.job_id)
+    total_average_job_file_power(parameters.job_id, separated_nodes)
 
 
     return
 
-def total_average_job_file_power(jobID):
+def total_average_job_file_power(jobID, nodes):
     total_average_power=0.0
 
-
-    for file in glob.glob("{}/*.pwr".format(jobID)):
-        print file
-        try:
-            data = np.genfromtxt(file, delimiter=',', names=True, dtype=None, usecols=(-1))
-            total_average_power+=np.average(data['Value'])/1000.00
-        except:
-            sys.exit("\nOooops, looks like something is wrong with the power samples!\nExiting ...\n")
-
+    for node in nodes:
+        for file in glob.glob("{0}/{1}.pwr".format(jobID, node)):
+            print file
+            try:
+                data = np.genfromtxt(file, delimiter=',', names=True, dtype=None, usecols=(-1))
+                total_average_power+=np.average(data['Value'])/1000.00
+            except:
+                sys.exit("\nOooops, looks like something is wrong with the power samples!\nExiting ...\n")
+    
     print "Total average power is: {}".format(total_average_power)
     return
 
@@ -49,6 +49,7 @@ def total_average_job_file_power(jobID):
 def get_pwr_nodes(start, end, nodes, jobID):
     if not os.path.exists(str(jobID)):
         os.makedirs(str(jobID))
+    print "Filtered nodes: {}".format(nodes)
     for node in nodes:
         try:
             cmd = "dcdbquery -h mb.mont.blanc -r {0}-PWR {1} {2}".format(node, start, end, node)
@@ -77,11 +78,14 @@ def convert_to_epoch(slurm_time):
     return epoch
     
 def parse_output(output):
-    
-    out_split = output.split("|")
-    begin = out_split[-3]
-    end = out_split[-2]
-    nodes = out_split[-1] 
+    try: 
+        out_split = output.split("|")
+        begin = out_split[-3]
+        end = out_split[-2]
+        nodes = out_split[-1] 
+        print nodes
+    except:
+        sys.exit('\nSeems like your job output line is out-of-bound. Check --acct-line-no parameter you have supplied\n\n')
     return (begin, end, nodes)
 
 def get_sacct_output(job_id):
@@ -92,7 +96,11 @@ def get_sacct_output(job_id):
 
     if len(err) == 0:
         out = out.split("\n")
-        out = out[-2] #here is the assumption of the 2nd last line carrying our data we need
+        print out
+        try:
+            out = out[1+int(parameters.ln)] #here is the assumption of the 2nd last line carrying our data we need
+        except:
+            sys.exit('\nSeems like your job output line is out-of-bound. Check --acct-line-no parameter you have supplied\n\n')
         return out
 
     else:
@@ -105,6 +113,11 @@ if __name__ == "__main__":
     parser.add_argument('--job-id', '-id', action='store',
                         dest="job_id",
                         help="SLURM JobID number for accounting",
+                        required=True)
+
+    parser.add_argument('--acct-line-no', '-ln', action='store',
+                        dest="ln",
+                        help="Line number in sacct output which contains relevant data. Indexing starts from 0 onwards.",
                         required=True)
 
 
