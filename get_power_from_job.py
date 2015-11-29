@@ -34,13 +34,13 @@ def total_average_job_file_power(jobID, nodes):
     total_average_power=0.0
 
     for node in nodes:
-        for file in glob.glob("{0}/{1}.pwr".format(jobID, node)):
-            print file
-            try:
-                data = np.genfromtxt(file, delimiter=',', names=True, dtype=None, usecols=(-1))
-                total_average_power+=np.average(data['Value'])/1000.00
-            except:
-                sys.exit("\nOooops, looks like something is wrong with the power samples!\nExiting ...\n")
+        file = "{0}/{1}.pwr".format(jobID, node)
+        print file
+        try:
+            data = np.genfromtxt(file, delimiter=',', names=True, dtype=None, usecols=(-1))
+            total_average_power+=np.average(data['Value'])/1000.00
+        except:
+            sys.exit("\nOooops, looks like something is wrong with the power samples!\nExiting ...\n")
     
     print "Total average power is: {}".format(total_average_power)
     return
